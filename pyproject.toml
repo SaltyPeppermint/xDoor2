@@ -4,12 +4,26 @@ version = "0.1.0"
 description = "xdoor but python"
 readme = "README.md"
 authors = [{ name = "Nicole Heinimann", email = "nicole@heinimann.de" }]
-requires-python = ">=3.14"
-dependencies = []
+requires-python = ">=3.13"
+dependencies = [
+    "asyncssh>=2.22.0",                      # replaces :ssh.daemon
+    "cryptography>=47.0.0",                  # replaces ExPublicKey / ex_crypto
+    "gpiod>=2.2.0; sys_platform == 'linux'", # replaces Circuits.GPIO
+    "httpx>=0.28.1",                         # replaces Req
+    "paho-mqtt>=2.1.0",                      # replaces ex_homeassistant
+]
 
 [project.scripts]
 xdoor2 = "xdoor2:main"
 
 [build-system]
-requires = ["uv_build>=0.12.5,<0.13.0"]
-build-backend = "uv_build"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.16.4",
+    "ty>=0.0.74",
+]

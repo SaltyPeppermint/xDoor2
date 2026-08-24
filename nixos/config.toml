@@ -1,0 +1,52 @@
+schema_version = 1
+
+[device]
+hostname = "xdoor"
+
+[ssh]
+listen_address = "0.0.0.0"
+port = 22
+host_key = "/run/credentials/xdoor2.service/ssh_host_key"
+greeting = "/etc/xdoor2/greeting"
+
+[storage]
+directory = "/data/xdoor"
+
+[authorized_keys]
+url = "https://xdoor.x-hain.de/authorized_keys"
+signature_url = "https://xdoor.x-hain.de/authorized_keys.sig"
+verification_key = "/var/lib/xdoor2/secrets/authorized_keys_pub.pem"
+cache_file = "/data/xdoor/authorized_keys"
+update_interval_seconds = 300
+
+[gpio]
+enabled = true
+chip = "/dev/gpiochip0"
+open_line = 23
+close_line = 24
+lock_sensor_line = 8
+motion_sensor_line = 7
+pulse_seconds = 1.0
+poll_interval_seconds = 0.2
+lock_sensor_active_low = true
+motion_sensor_active_high = true
+motion_timeout_seconds = 300
+
+[mqtt]
+host = "homeassistant.lan.xhain.space"
+port = 1883
+username = "homeassistant"
+password_file = "/run/credentials/xdoor2.service/mqtt_password"
+client_id = "xdoor"
+discovery_prefix = "homeassistant"
+
+[monitor]
+enabled = true
+network_interface = "eth0"
+network_failure_reboot_seconds = 300
+health_check_interval_seconds = 60
+
+[logging]
+level = "INFO"
+login_log = "/data/xdoor/logins"
+lock_state_log = "/data/xdoor/lock_state_changes"

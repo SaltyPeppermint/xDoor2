@@ -1,5 +1,5 @@
 {
-  description = "Development environment for xDoor2";
+  description = "xdoor but python";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -7,25 +7,54 @@
   };
 
   outputs =
-    { nixpkgs, flake-utils, ... }:
-    flake-utils.lib.eachDefaultSystem (
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+      ...
+    }:
+    let
+      xdoorSystem = nixpkgs.lib.nixosSystem {
+        system = "aarch64-linux";
+        specialArgs.xdoor2Package = self.packages.aarch64-linux.xdoor2;
+        modules = [ ./nixos/rpi3-image.nix ];
+      };
+    in
+    (flake-utils.lib.eachDefaultSystem (
       system:
       let
         pkgs = import nixpkgs { inherit system; };
       in
       {
+        packages = {
+          xdoor2 = pkgs.python313Packages.callPackage ./nixos/package.nix { };
+          image = xdoorSystem.config.system.build.sdImage;
+          default = self.packages.${system}.xdoor2;
+        };
+
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
-            nixfmt
-            nil
+            # ty
+            nixos-rebuild
             nixd
+            nixfmt
+            openssh
+            python313
+            # ruff
+            sops
             uv
-            fish
-            util-linux
+            zstd
           ];
+
+          shellHook = ''
+            export LANG=C.UTF-8
+          '';
         };
 
         formatter = pkgs.nixfmt;
       }
-    );
+    ))
+    // {
+      nixosConfigurations.xdoor = xdoorSystem;
+    };
 }
