@@ -1,0 +1,15 @@
+[project]
+name = "xdoor2"
+version = "0.1.0"
+description = "xdoor but python"
+readme = "README.md"
+authors = [{ name = "Nicole Heinimann", email = "nicole@heinimann.de" }]
+requires-python = ">=3.14"
+dependencies = []
+
+[project.scripts]
+xdoor2 = "xdoor2:main"
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
