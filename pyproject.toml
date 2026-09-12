@@ -24,5 +24,8 @@ build-backend = "hatchling.build"
 dev = ["pytest>=9.1.1", "pytest-asyncio>=1.4.0", "ruff>=0.16.4", "ty>=0.0.74"]
 
 [tool.ruff]
-# Set the maximum line length to 79.
 line-length = 100
+
+[tool.ruff.format]
+docstring-code-format = true
+skip-magic-trailing-comma = true
