@@ -1,2 +1,37 @@
+import asyncio
+import logging
+import os
+from pathlib import Path
+
+from xdoor2 import helpers, ssh_server
+from xdoor2.ssh_keys import KeyStore
+
+log = logging.getLogger(__name__)
+
+
+async def run(config: dict, greeting: str) -> None:
+
+    log.info("Starting up")
+
+    store = KeyStore(config["authorized_keys"], hostname=config["device"]["hostname"])
+    store.start()
+    log.info("Keystore initialized and running")
+
+    log.info("Starting SSH Server")
+    await ssh_server.listen(store, config["ssh"], greeting)
+    await asyncio.Event().wait()
+
+
 def main() -> None:
-    print("Hello from xdoor2!")
+    config = helpers.load_config(Path(os.environ["XDOOR_CONFIG"]))
+    logging.basicConfig(
+        level=config["logging"]["level"],
+        format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+    )
+    greeting = Path(config["ssh"]["greeting"]).read_text(encoding="utf-8")
+
+    asyncio.run(run(config, greeting))
+
+
+if __name__ == "__main__":
+    main()

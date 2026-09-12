@@ -9,7 +9,7 @@
   users.groups.xdoor = { };
   users.users.xdoor = {
     isSystemUser = true;
-    group = "xdoor";
+    group = "xdoor2";
     extraGroups = [ "gpio" ];
     home = "/var/lib/xdoor2";
     createHome = true;
@@ -24,13 +24,13 @@
 
   systemd.tmpfiles.rules = [
     "d /data 0755 root root -"
-    "d /data/xdoor 0750 xdoor xdoor -"
+    "d /data/xdoor2 0750 xdoor xdoor -"
     "d /var/lib/xdoor2/secrets 0750 root xdoor -"
   ];
 
   systemd.services.xdoor2 = {
-    description = "xDoor controller";
-    documentation = [ "https://github.com/xHain/xDoor" ];
+    description = "xDoor2 controller";
+    documentation = [ "https://github.com/xHain/xDoor2" ];
     wantedBy = [ "multi-user.target" ];
     wants = [ "network-online.target" ];
     after = [
@@ -44,8 +44,8 @@
     environment.XDOOR_CONFIG = "/etc/xdoor2/config.toml";
     serviceConfig = {
       Type = "simple";
-      User = "xdoor";
-      Group = "xdoor";
+      User = "xdoor2";
+      Group = "xdoor2";
       SupplementaryGroups = [ "gpio" ];
       ExecStart = lib.getExe xdoor2Package;
       Restart = "on-failure";
@@ -84,7 +84,7 @@
       RestrictRealtime = true;
       LockPersonality = true;
       ReadWritePaths = [
-        "/data/xdoor"
+        "/data/xdoor2"
         "/run"
       ];
     };

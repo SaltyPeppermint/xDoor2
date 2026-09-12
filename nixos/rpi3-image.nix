@@ -14,12 +14,12 @@
   ];
 
   networking = {
-    hostName = "xdoor";
+    hostName = "xdoor2";
     usePredictableInterfaceNames = false;
     useDHCP = false;
     interfaces.eth0.useDHCP = true;
     firewall.allowedTCPPorts = [
-      22 # xDoor application SSH server
+      22 # xDoor2 application SSH server
       23 # administrative OpenSSH server
     ];
   };

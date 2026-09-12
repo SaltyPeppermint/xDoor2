@@ -1,7 +1,7 @@
 schema_version = 1
 
 [device]
-hostname = "xdoor"
+hostname = "xdoor2"
 
 [ssh]
 listen_address = "0.0.0.0"
@@ -10,13 +10,14 @@ host_key = "/run/credentials/xdoor2.service/ssh_host_key"
 greeting = "/etc/xdoor2/greeting"
 
 [storage]
-directory = "/data/xdoor"
+directory = "/data/xdoor2"
 
 [authorized_keys]
 url = "https://xdoor.x-hain.de/authorized_keys"
 signature_url = "https://xdoor.x-hain.de/authorized_keys.sig"
-verification_key = "/var/lib/xdoor2/secrets/authorized_keys_pub.pem"
+verify_key_path = "/var/lib/xdoor2/secrets/authorized_keys_pub.pem"
 cache_file = "/data/xdoor/authorized_keys"
+admin_keys_path = "/etc/xdoor/admin_keys"
 update_interval_seconds = 300
 
 [gpio]
@@ -37,7 +38,7 @@ host = "homeassistant.lan.xhain.space"
 port = 1883
 username = "homeassistant"
 password_file = "/run/credentials/xdoor2.service/mqtt_password"
-client_id = "xdoor"
+client_id = "xdoor2"
 discovery_prefix = "homeassistant"
 
 [monitor]
