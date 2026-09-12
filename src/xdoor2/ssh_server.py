@@ -7,12 +7,12 @@ import asyncssh
 from asyncssh import SSHServerChannel
 
 import xdoor2.lock_control
-from xdoor2.lock_control import TIMEOUT
+from xdoor2.lock_control import ACTION_TIMEOUT, QUEUE_TIMEOUT, DoorBusy, DoorStuck
 from xdoor2.ssh_keys import KeyStore
 
 ALLOWED: dict[str, Callable[[SSHServerChannel], Awaitable[str]]] = {
-    "open": xdoor2.lock_control.open,
-    "close": xdoor2.lock_control.close,
+    "open": xdoor2.lock_control.unlock,
+    "close": xdoor2.lock_control.lock,
     "admin": xdoor2.lock_control.admin,
 }
 
@@ -52,9 +52,12 @@ class DoorSession(asyncssh.SSHServerSession):
 
         try:
             result = await ALLOWED[self._username](self._chan)
-        except TimeoutError:
-            log.error(f"{self._username} timed out after {TIMEOUT}s ({self._peer})")
-            message = "timed out"
+        except DoorBusy:
+            log.warning(f"{self._username} waited {QUEUE_TIMEOUT}s for the door ({self._peer})")
+            message = "Someone else is interfacing with the door."
+        except DoorStuck:
+            log.error(f"{self._username} did not finish in {ACTION_TIMEOUT}s ({self._peer})")
+            message = "Door mechanism did not finish in time. This is worrying! Ask Ronja or Nicole"
         except Exception:
             log.exception(f"{self._username} failed for {self._peer}")
         else:
@@ -86,10 +89,12 @@ class DoorServer(asyncssh.SSHServer):
 
     def begin_auth(self, username: str) -> bool:
         assert self._conn is not None
-        self._conn.send_auth_banner(self._greeting)
-        if username not in ALLOWED:
+        if username in ALLOWED:
+            self._conn.send_auth_banner(self._greeting)
+        else:
             # No keys means no public key can validate means auth fails.
-            log.warning(f"auth attempt for unknown user {username} from {self._peer}")
+            log.warning(f"auth attempt for unknown user {username!r} from {self._peer}")
+            self._conn.set_authorized_keys(None)
             return True
         self._conn.set_authorized_keys(self._keystore.current())
         return True  # WE always require auth so we return true!

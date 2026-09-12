@@ -14,6 +14,9 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
 log = logging.getLogger(__name__)
 
+# See file mode in nixos/xdoor2.nix
+CACHE_FILE_MODE = 0o640
+
 
 class KeyStore:
     def __init__(self, config: dict, *, hostname: str = "") -> None:
@@ -51,9 +54,10 @@ class KeyStore:
             log.debug("no changes to authorized keys")
             return
 
-        self._keys = self._build(raw)
-        self._raw = raw
+        keys = self._build(raw)
         self._persist(raw)
+        self._keys = keys
+        self._raw = raw
         log.info("authorized keys changed")
 
     def start(self) -> None:
@@ -76,7 +80,7 @@ class KeyStore:
                 raise
             except Exception:
                 log.exception("key refresh failed, keeping previous set")
-            delay = max(1.0, self._config["update_interval_seconds"] + random.uniform(-1, 1))
+            delay = max(1.0, self._config["update_interval_seconds"] + random.uniform(-3, 3))
             await asyncio.sleep(delay)
 
     async def _fetch(self) -> tuple[bytes, bytes]:
@@ -93,7 +97,20 @@ class KeyStore:
         return asyncssh.import_authorized_keys(self._admin_keys + "\n" + raw.decode())
 
     def _persist(self, raw: bytes) -> None:
+        # Ugly song and dance needed to work around cut power
+        # Unix FS, why you be like this
         cache_file = Path(self._config["cache_file"])
         tmp = cache_file.with_name(cache_file.name + ".tmp")
-        tmp.write_bytes(raw)
+        with open(tmp, "wb") as f:
+            f.write(raw)
+            f.flush()
+            os.fsync(f.fileno())
+        # dont silently change the mod of the cache file
+        os.chmod(tmp, CACHE_FILE_MODE)
         os.replace(tmp, cache_file)
+
+        dir_fd = os.open(cache_file.parent, os.O_RDONLY)
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
