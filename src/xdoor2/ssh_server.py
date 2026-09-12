@@ -4,13 +4,12 @@ import logging
 from collections.abc import Awaitable, Callable
 
 import asyncssh
-from asyncssh import SSHServerChannel
 
 import xdoor2.lock_control
 from xdoor2.lock_control import ACTION_TIMEOUT, QUEUE_TIMEOUT, DoorBusy, DoorStuck
 from xdoor2.ssh_keys import KeyStore
 
-ALLOWED: dict[str, Callable[[SSHServerChannel], Awaitable[str]]] = {
+ALLOWED: dict[str, Callable[[Callable[[str], None]], Awaitable[str]]] = {
     "open": xdoor2.lock_control.unlock,
     "close": xdoor2.lock_control.lock,
     "admin": xdoor2.lock_control.admin,
@@ -50,8 +49,10 @@ class DoorSession(asyncssh.SSHServerSession):
         code = 1
         message = "failed"
 
+        # TODO: Type inference somehow fails if I dont bind it
+        chan = self._chan
         try:
-            result = await ALLOWED[self._username](self._chan)
+            result = await ALLOWED[self._username](lambda line: self._write_line(chan, line))
         except DoorBusy:
             log.warning(f"{self._username} waited {QUEUE_TIMEOUT}s for the door ({self._peer})")
             message = "Someone else is interfacing with the door."
@@ -66,13 +67,18 @@ class DoorSession(asyncssh.SSHServerSession):
         finally:
             self._finish(code, message)
 
-    def _finish(self, code: int, message: str) -> None:
-        chan = self._chan
-        if chan is None:
-            return
+    @staticmethod
+    def _write_line(chan: asyncssh.SSHServerChannel, line: str) -> None:
+        # A client that vanished mid-action must not abort the door action
         with contextlib.suppress(OSError):
-            chan.write(f"{message}\r\n")
-            chan.exit(code)
+            chan.write(f"{line}\r\n")
+
+    def _finish(self, code: int, message: str) -> None:
+        if self._chan is None:
+            return
+        self._write_line(self._chan, message)
+        with contextlib.suppress(OSError):
+            self._chan.exit(code)
 
 
 class DoorServer(asyncssh.SSHServer):

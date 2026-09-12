@@ -3,9 +3,8 @@ import functools
 import logging
 from collections.abc import Awaitable, Callable
 
-from asyncssh import SSHServerChannel
-
 log = logging.getLogger(__name__)
+
 
 # Separate timeouts for the lock/unlock action and the queue for the lock
 QUEUE_TIMEOUT = 15.0
@@ -23,12 +22,12 @@ class DoorStuck(TimeoutError):
 
 
 def physical_action(
-    action: Callable[[SSHServerChannel], Awaitable[str]],
-) -> Callable[[SSHServerChannel], Awaitable[str]]:
+    action: Callable[[Callable[[str], None]], Awaitable[str]],
+) -> Callable[[Callable[[str], None]], Awaitable[str]]:
     """decorator for the door timeout/lock shenanigans"""
 
     @functools.wraps(action)
-    async def wrapper(chan: SSHServerChannel) -> str:
+    async def wrapper(notify: Callable[[str], None]) -> str:
         try:
             async with asyncio.timeout(QUEUE_TIMEOUT):
                 await _door_lock.acquire()
@@ -40,7 +39,7 @@ def physical_action(
         budget = asyncio.timeout(ACTION_TIMEOUT)
         try:
             async with budget:
-                return await action(chan)
+                return await action(notify)
         except TimeoutError as exc:
             if not budget.expired():
                 raise  # Timeout from inside action
@@ -52,30 +51,27 @@ def physical_action(
 
 
 @physical_action
-async def unlock(chan: SSHServerChannel) -> str:
+async def unlock(write: Callable[[str], None]) -> str:
     log.debug("Starting door unlocking")
-    chan.write("Starting door unlocking\r\n")
+    write("Starting door unlocking")
     await asyncio.sleep(0.5)
     return "Door unlocked."
 
 
 @physical_action
-async def lock(chan: SSHServerChannel) -> str:
+async def lock(write: Callable[[str], None]) -> str:
     log.debug("Starting door locking")
-    chan.write("Starting door locking\r\n")
+    write("Starting door locking")
     await asyncio.sleep(0.5)
     return "Door locked!"
 
 
 @physical_action
-async def admin(chan: SSHServerChannel) -> str:
+async def admin(write: Callable[[str], None]) -> str:
     log.debug("Admin Mode entered")
-    chan.write(
-        "YOU ARE NOW IN ADMIN MODE!\r\n"
-        "THIS IS FOR CALIBRATING THE LOCKING MECHANISM!\r\n"
-        "THIS CAN EASILY DESTROY PHYSICAL EQUIPMENT!\r\n"
-        "LOG OUT UNLESS YOU HAVE READ THE SOURCE CODE "
-        "*AND* TALKED TO BOTH RONJA AND NICOLE!\r\n"
-    )
+    write("YOU ARE NOW IN ADMIN MODE!")
+    write("THIS IS FOR CALIBRATING THE LOCKING MECHANISM!")
+    write("THIS CAN EASILY DESTROY PHYSICAL EQUIPMENT!")
+    write("LOG OUT UNLESS YOU HAVE READ THE SOURCE CODE *AND* TALKED TO BOTH RONJA AND NICOLE!")
     await asyncio.sleep(0.5)
     return "Admin mode exited."
