@@ -82,3 +82,4 @@ Please actually do all of this
 The NixOS configuration lives in `nixos/`:
 - `nixos/rpi3-image.nix`: machine config,
 - `nixos/xdoor2.nix` application user, GPIO, credentials, systemd service.
+- `nixos/admin-keys.nix` SSH keys for the door admins(used for normal OpenSSH on port 23 and admin interface of app).

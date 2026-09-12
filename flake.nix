@@ -14,7 +14,7 @@
       ...
     }:
     let
-      xdoorSystem = nixpkgs.lib.nixosSystem {
+      xdoor2System = nixpkgs.lib.nixosSystem {
         system = "aarch64-linux";
         specialArgs.xdoor2Package = self.packages.aarch64-linux.xdoor2;
         modules = [ ./nixos/rpi3-image.nix ];
@@ -28,20 +28,20 @@
       {
         packages = {
           xdoor2 = pkgs.python313Packages.callPackage ./nixos/package.nix { };
-          image = xdoorSystem.config.system.build.sdImage;
+          image = xdoor2System.config.system.build.sdImage;
           default = self.packages.${system}.xdoor2;
         };
 
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
-            # ty
             nixos-rebuild
             nixd
             nixfmt
             openssh
             python313
-            # ruff
+            ruff
             sops
+            ty
             uv
             zstd
           ];
@@ -55,6 +55,6 @@
       }
     ))
     // {
-      nixosConfigurations.xdoor = xdoorSystem;
+      nixosConfigurations.xdoor2 = xdoor2System;
     };
 }

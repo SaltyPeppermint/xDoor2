@@ -3,7 +3,6 @@
   lib,
   modulesPath,
   pkgs,
-  xdoor2Package,
   ...
 }:
 
@@ -48,10 +47,7 @@
   users.users.admin = {
     isNormalUser = true;
     extraGroups = [ "wheel" ];
-    openssh.authorizedKeys.keys = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFk68ujMEgPVglDNnxqrht/0piGwofQy4GmPjgq4CvUV"
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINkN6Gh946RDixD57F0DVCKDSWTgJWIdW5YXbokMXuwi"
-    ];
+    openssh.authorizedKeys.keys = import ./admin-keys.nix;
   };
   security.sudo.wheelNeedsPassword = false;
   nix.settings.trusted-users = [
@@ -88,15 +84,13 @@
     "ext4"
     "vfat"
   ];
-  boot.zfs.forceImportRoot = false;
 
   # The upstream SD-card profile includes a broad set of installer and rescue
   # tools. Keep the appliance image focused on what is useful on the door Pi.
   environment.defaultPackages = lib.mkForce [ ];
-  environment.systemPackages = lib.mkForce [
+  environment.systemPackages = [
     pkgs.libgpiod
     pkgs.vim
-    xdoor2Package
   ];
   documentation.enable = false;
   documentation.nixos.enable = false;

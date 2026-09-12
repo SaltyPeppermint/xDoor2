@@ -16,8 +16,8 @@ directory = "/data/xdoor2"
 url = "https://xdoor.x-hain.de/authorized_keys"
 signature_url = "https://xdoor.x-hain.de/authorized_keys.sig"
 verify_key_path = "/var/lib/xdoor2/secrets/authorized_keys_pub.pem"
-cache_file = "/data/xdoor/authorized_keys"
-admin_keys_path = "/etc/xdoor/admin_keys"
+cache_file = "/data/xdoor2/authorized_keys"
+admin_keys_path = "/etc/xdoor2/admin_keys"
 update_interval_seconds = 300
 
 [gpio]
@@ -49,5 +49,5 @@ health_check_interval_seconds = 60
 
 [logging]
 level = "INFO"
-login_log = "/data/xdoor/logins"
-lock_state_log = "/data/xdoor/lock_state_changes"
+login_log = "/data/xdoor2/logins"
+lock_state_log = "/data/xdoor2/lock_state_changes"

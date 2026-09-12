@@ -38,7 +38,7 @@ flash: check-image
 
 deploy:
 	NIX_SSHOPTS='$(NIX_SSHOPTS)' nixos-rebuild switch \
-		--flake "path:$(PROJECT_ROOT)#xdoor" \
+		--flake "path:$(PROJECT_ROOT)#xdoor2" \
 		--target-host "$(SSH_DEST)" \
 		--use-remote-sudo
 
@@ -50,9 +50,9 @@ generate-secrets:
 provision: generate-secrets
 	scp -P "$(SSH_PORT)" secrets/mqtt_pw priv/authorized_keys_pub.pem "$(SSH_DEST):/tmp/"
 	ssh -p "$(SSH_PORT)" "$(SSH_DEST)" \
-		"sudo install -d -m 0750 -o root -g xdoor /var/lib/xdoor2/secrets && \
-		 sudo install -m 0440 -o root -g xdoor /tmp/mqtt_pw /var/lib/xdoor2/secrets/mqtt_password && \
-		 sudo install -m 0440 -o root -g xdoor /tmp/authorized_keys_pub.pem /var/lib/xdoor2/secrets/authorized_keys_pub.pem && \
+		"sudo install -d -m 0750 -o root -g xdoor2 /var/lib/xdoor2/secrets && \
+		 sudo install -m 0440 -o root -g xdoor2 /tmp/mqtt_pw /var/lib/xdoor2/secrets/mqtt_password && \
+		 sudo install -m 0440 -o root -g xdoor2 /tmp/authorized_keys_pub.pem /var/lib/xdoor2/secrets/authorized_keys_pub.pem && \
 		 rm -f /tmp/mqtt_pw /tmp/authorized_keys_pub.pem && \
 		 sudo systemctl restart xdoor2"
 
@@ -69,7 +69,7 @@ lint:
 format:
 	uv run ruff format .
 	uv run ruff check --fix .
-	nix fmt flake.nix nixos/package.nix nixos/rpi3-image.nix nixos/xdoor2.nix
+	nix fmt flake.nix nixos/admin-keys.nix nixos/package.nix nixos/rpi3-image.nix nixos/xdoor2.nix
 
 clean:
 	rm -f "$(RESULT)"

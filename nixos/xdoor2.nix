@@ -6,8 +6,8 @@
 
 {
   users.groups.gpio = { };
-  users.groups.xdoor = { };
-  users.users.xdoor = {
+  users.groups.xdoor2 = { };
+  users.users.xdoor2 = {
     isSystemUser = true;
     group = "xdoor2";
     extraGroups = [ "gpio" ];
@@ -17,6 +17,7 @@
 
   environment.etc."xdoor2/config.toml".source = ./config.toml;
   environment.etc."xdoor2/greeting".source = ./greeting;
+  environment.etc."xdoor2/admin_keys".text = lib.concatLines (import ./admin-keys.nix);
   services.udev.extraRules = ''
     SUBSYSTEM=="gpio", KERNEL=="gpiochip*", GROUP="gpio", MODE="0660"
   '';
@@ -24,8 +25,10 @@
 
   systemd.tmpfiles.rules = [
     "d /data 0755 root root -"
-    "d /data/xdoor2 0750 xdoor xdoor -"
-    "d /var/lib/xdoor2/secrets 0750 root xdoor -"
+    "d /data/xdoor2 0750 xdoor2 xdoor2 -"
+    "d /var/lib/xdoor2/secrets 0750 root xdoor2 -"
+    # Empty key cache on a new card but f does not overwrite an existing cache
+    "f /data/xdoor2/authorized_keys 0640 xdoor2 xdoor2 -"
   ];
 
   systemd.services.xdoor2 = {
