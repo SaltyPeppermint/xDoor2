@@ -11,7 +11,7 @@ IMAGE ?= $(firstword $(wildcard $(RESULT)/sd-image/*.img.zst) $(wildcard $(PROJE
 
 .DEFAULT_GOAL := help
 
-.PHONY: help image firmware check-image flash deploy generate-secrets provision shell test lint format clean
+.PHONY: help image check-image flash deploy generate-secrets provision shell test lint format clean
 
 help:
 	@echo "xDoor2 targets:"
@@ -24,9 +24,6 @@ help:
 
 image:
 	nix build "path:$(PROJECT_ROOT)#image" --out-link "$(RESULT)"
-
-# Compatibility for scripts which used the old target name.
-firmware: image
 
 check-image:
 	@test -n "$(IMAGE)" || { echo "No SD image found. Run 'make image' or the documented Mac container build first." >&2; exit 1; }
