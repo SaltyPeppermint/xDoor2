@@ -65,7 +65,7 @@ class Door:
             write("Starting door unlocking")
             match self._state:
                 case DoorState.LOCKED:
-                    await self._move(-self._travel_steps())
+                    await self._move(-self._travel_distance())
                     self._state = DoorState.UNLOCKED
                     return "Door locked!"
                 case DoorState.UNLOCKED:
@@ -79,7 +79,7 @@ class Door:
             write("Starting door locking")
             match self._state:
                 case DoorState.UNLOCKED:
-                    await self._move(self._travel_steps())
+                    await self._move(self._travel_distance())
                     self._state = DoorState.LOCKED
                     return "Door locked!"
                 case DoorState.LOCKED:
@@ -168,7 +168,7 @@ class Door:
         except GPIOZeroError as exc:
             raise PhysicalProblem(f"motor could not run {steps}") from exc
 
-    def _travel_steps(self) -> int:
+    def _travel_distance(self) -> int:
         """Ugly hand rolled cache"""
         if self._distance is not None:
             return self._distance
