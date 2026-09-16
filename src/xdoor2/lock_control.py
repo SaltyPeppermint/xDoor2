@@ -59,7 +59,7 @@ class Door:
             write("Starting door unlocking")
             match self._state:
                 case DoorState.LOCKED:
-                    self._motor._move(-self._travel_distance())
+                    await self._motor.steps(-self._travel_distance())
                     self._state = DoorState.UNLOCKED
                     return "Door locked!"
                 case DoorState.UNLOCKED:
@@ -73,7 +73,7 @@ class Door:
             write("Starting door locking")
             match self._state:
                 case DoorState.UNLOCKED:
-                    self._motor._move(self._travel_distance())
+                    await self._motor.steps(self._travel_distance())
                     self._state = DoorState.LOCKED
                     return "Door locked!"
                 case DoorState.LOCKED:
@@ -131,7 +131,7 @@ class Door:
                 case ["edit", *_]:
                     write("Edit requires positive int as second arg")
                 case ["move", value] if (steps := _parse_steps(value)) is not None:
-                    self._motor.steps(steps)
+                    await self._motor.steps(steps)
                     traveled += steps
                     write(f"Moved {steps} steps, {traveled} in total. Use 'commit' to commit it.")
                 case ["move", *_]:

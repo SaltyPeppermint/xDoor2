@@ -1,3 +1,4 @@
+import asyncio
 import time
 
 from gpiozero import CompositeDevice, OutputDevice
@@ -26,8 +27,11 @@ class StepperDriver(CompositeDevice):
         self.step_time = step_time
         self.position = 0
 
-    def steps(self, steps: int) -> None:
-        """Move steps. Negative steps run backwards."""
+    async def steps(self, steps: int) -> None:
+        """Move steps. Negative steps run backwards, async."""
+        await asyncio.to_thread(self._steps_sync, steps)
+
+    def _steps_sync(self, steps: int) -> None:
         if steps == 0:
             return
         self.dir.value = steps > 0
