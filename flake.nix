@@ -27,7 +27,7 @@
       in
       {
         packages = {
-          xdoor2 = pkgs.python313Packages.callPackage ./nixos/package.nix { };
+          xdoor2 = pkgs.python314Packages.callPackage ./nixos/package.nix { };
           image = xdoor2System.config.system.build.sdImage;
           default = self.packages.${system}.xdoor2;
         };
@@ -38,7 +38,7 @@
             nixd
             nixfmt
             openssh
-            python313
+            python314
             ruff
             sops
             ty
