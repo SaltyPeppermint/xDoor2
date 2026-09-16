@@ -39,6 +39,10 @@ class DoorMisconfig(Exception):
     """Door was never properly configured and this is bad!"""
 
 
+class StateMachineIssue(Exception):
+    """Door somehow ended up in a broken state machine state!"""
+
+
 class Door:
     def __init__(self, config: dict, *, distance_file: Path) -> None:
         self._motor = AsyncStepper(2048, config["phase_line"], config["enable_line"])
@@ -59,17 +63,29 @@ class Door:
         async with self._hold():
             log.debug("Starting door unlocking")
             write("Starting door unlocking")
-            await self._move(-self._travel_steps())
-            self._state = DoorState.UNLOCKED
-        return "Door unlocked!"
+            match self._state:
+                case DoorState.LOCKED:
+                    await self._move(-self._travel_steps())
+                    self._state = DoorState.UNLOCKED
+                    return "Door locked!"
+                case DoorState.UNLOCKED:
+                    return "Door was already unlocked!"
+                case DoorState.MAINTENANCE:
+                    raise StateMachineIssue("Tried unlocking, but was in maintainance mode")
 
     async def lock(self, write: WriteLine, read: ReadLine) -> str:
         async with self._hold():
             log.debug("Starting door locking")
             write("Starting door locking")
-            await self._move(self._travel_steps())
-            self._state = DoorState.LOCKED
-        return "Door locked!"
+            match self._state:
+                case DoorState.UNLOCKED:
+                    await self._move(self._travel_steps())
+                    self._state = DoorState.LOCKED
+                    return "Door locked!"
+                case DoorState.LOCKED:
+                    return "Door was already locked!"
+                case DoorState.MAINTENANCE:
+                    raise StateMachineIssue("Tried locking, but was in maintainance mode")
 
     async def admin(self, write: WriteLine, read: ReadLine) -> str:
         async with self._hold():

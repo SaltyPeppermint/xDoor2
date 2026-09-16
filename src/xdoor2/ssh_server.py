@@ -5,7 +5,7 @@ import logging
 import asyncssh
 
 from xdoor2.helpers import DoorAction, WriterGone
-from xdoor2.lock_control import DoorBusy, DoorMisconfig, PhysicalProblem
+from xdoor2.lock_control import DoorBusy, DoorMisconfig, PhysicalProblem, StateMachineIssue
 from xdoor2.ssh_keys import KeyStore
 
 log = logging.getLogger(__name__)
@@ -79,6 +79,9 @@ class DoorSession(asyncssh.SSHServerSession):
         except DoorBusy:
             log.warning(f"{self._username} had a timeout waiting for the door ({self._peer})")
             message = "Someone else is interfacing with the door."
+        except StateMachineIssue:
+            log.warning(f"{self._username} tried lock/unlock in maintainance mode ({self._peer})")
+            message = "Somehow the state machine was in maintainance mode during a lock/unlock"
         except PhysicalProblem:
             log.error(f"{self._username} resulted in physical malfunction ({self._peer})")
             message = "Door mechanism had a physical malfunction. This is bad! Ask Ronja or Nicole"
@@ -88,6 +91,7 @@ class DoorSession(asyncssh.SSHServerSession):
         except WriterGone:
             log.info(f"{self._username} disconnected mid action ({self._peer})")
             message = "Client disconnected."
+
         except Exception:
             log.exception(f"{self._username} failed for {self._peer}")
         else:
