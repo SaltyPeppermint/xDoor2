@@ -4,7 +4,7 @@
   hatchling,
   asyncssh,
   cryptography,
-  gpiod,
+  gpiozero,
   httpx,
   paho-mqtt,
 }:
@@ -27,7 +27,7 @@ buildPythonApplication {
   dependencies = [
     asyncssh
     cryptography
-    gpiod
+    gpiozero
     httpx
     paho-mqtt
   ];
