@@ -2,7 +2,7 @@ SHELL := bash
 .SHELLFLAGS := -eu -o pipefail -c
 
 PROJECT_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-HOST ?= xdoor.lan.xhain.space
+HOST ?= xdoor2.lan.xhain.space
 SSH_PORT ?= 23
 SSH_DEST := admin@$(HOST)
 NIX_SSHOPTS := -p $(SSH_PORT)
