@@ -8,7 +8,7 @@ from pathlib import Path
 from gpiozero import GPIOZeroError
 
 from xdoor2.helpers import DoorAction, ReadLine, WriteLine
-from xdoor2.stepper import AsyncStepper
+from xdoor2.stepper import StepperDriver
 
 log = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class StateMachineIssue(Exception):
 
 class Door:
     def __init__(self, config: dict, *, distance_file: Path) -> None:
-        self._motor = AsyncStepper(2048, config["phase_line"], config["enable_line"])
+        self._motor = StepperDriver(config["pul_line"], config["dir_line"], config["ena_line"])
         self._distance_file = distance_file
         self._lock = asyncio.Lock()
         self._state = DoorState.LOCKED
@@ -164,7 +164,7 @@ class Door:
         if steps == 0:
             return
         try:
-            await self._motor.step(steps)
+            self._motor.steps(steps)
         except GPIOZeroError as exc:
             raise PhysicalProblem(f"motor could not run {steps}") from exc
 

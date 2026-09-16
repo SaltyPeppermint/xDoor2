@@ -25,15 +25,9 @@ update_interval_seconds = 300
 [gpio]
 enabled = true
 chip = "/dev/gpiochip0"
-open_line = 23
-close_line = 24
-lock_sensor_line = 8
-motion_sensor_line = 7
-pulse_seconds = 1.0
-poll_interval_seconds = 0.2
-lock_sensor_active_low = true
-motion_sensor_active_high = true
-motion_timeout_seconds = 300
+pul_line = 22
+dir_line = 23
+ena_line = 24
 
 [mqtt]
 host = "homeassistant.lan.xhain.space"
