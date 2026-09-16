@@ -11,6 +11,8 @@ greeting = "/etc/xdoor2/greeting"
 
 [storage]
 directory = "/data/xdoor2"
+# Created by the tmpfiles xdoor2.nix, 0 = "uncalibrated"
+door_distance_file = "/data/xdoor2/door_distance"
 
 [authorized_keys]
 url = "https://xdoor.x-hain.de/authorized_keys"

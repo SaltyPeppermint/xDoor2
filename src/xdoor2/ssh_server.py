@@ -1,31 +1,28 @@
 import asyncio
 import contextlib
 import logging
-from collections.abc import Awaitable, Callable
 
 import asyncssh
 
-import xdoor2.lock_control
-from xdoor2.lock_control import ACTION_TIMEOUT, QUEUE_TIMEOUT, DoorBusy, DoorStuck
+from xdoor2.helpers import DoorAction, WriterGone
+from xdoor2.lock_control import DoorBusy, DoorMisconfig, PhysicalProblem
 from xdoor2.ssh_keys import KeyStore
-
-ALLOWED: dict[str, Callable[[Callable[[str], None]], Awaitable[str]]] = {
-    "open": xdoor2.lock_control.unlock,
-    "close": xdoor2.lock_control.lock,
-    "admin": xdoor2.lock_control.admin,
-}
 
 log = logging.getLogger(__name__)
 
 
 class DoorSession(asyncssh.SSHServerSession):
-    def __init__(self, username: str, peer: str | None) -> None:
+    def __init__(self, username: str, action: DoorAction, peer: str | None) -> None:
         if not peer:
             log.warning("Peer is None")
         self._username = username
+        self._action = action
         self._peer = peer
         self._chan: asyncssh.SSHServerChannel | None = None
         self._task: asyncio.Task[None] | None = None
+        self._input: asyncio.Queue[str | None] = asyncio.Queue()
+        self._buf = ""
+        self._eof = False
 
     def connection_made(self, chan: asyncssh.SSHServerChannel) -> None:
         self._chan = chan
@@ -33,12 +30,38 @@ class DoorSession(asyncssh.SSHServerSession):
     def connection_lost(self, exc: Exception | None) -> None:
         # Do not cancel the opening/closing otherwise we get a weird state
         self._chan = None
+        self._input.put_nowait(None)  # unblock anyone waiting
 
     def shell_requested(self) -> bool:
         return True
 
     def session_started(self) -> None:
         self._task = asyncio.create_task(self._run(), name=f"door-{self._username}")
+
+    def data_received(self, data: str, datatype: asyncssh.DataType) -> None:
+        self._input.put_nowait(data)
+
+    def eof_received(self) -> bool:
+        self._input.put_nowait(None)
+        return True
+
+    async def _read_line(self, timeout: float | None = 30) -> str | None:
+        try:
+            async with asyncio.timeout(timeout):
+                while True:
+                    nl = self._buf.find("\n")
+                    if nl >= 0:
+                        line, self._buf = self._buf[:nl], self._buf[nl + 1 :]
+                        return line.rstrip("\r")
+                    if self._eof:
+                        raise WriterGone
+                    chunk = await self._input.get()
+                    if chunk is None:
+                        self._eof = True
+                    else:
+                        self._buf += chunk
+        except TimeoutError:
+            return None
 
     async def _run(self) -> None:
         if self._chan is None:
@@ -52,13 +75,19 @@ class DoorSession(asyncssh.SSHServerSession):
         # TODO: Type inference somehow fails if I dont bind it
         chan = self._chan
         try:
-            result = await ALLOWED[self._username](lambda line: self._write_line(chan, line))
+            result = await self._action(lambda line: self._write_line(chan, line), self._read_line)
         except DoorBusy:
-            log.warning(f"{self._username} waited {QUEUE_TIMEOUT}s for the door ({self._peer})")
+            log.warning(f"{self._username} had a timeout waiting for the door ({self._peer})")
             message = "Someone else is interfacing with the door."
-        except DoorStuck:
-            log.error(f"{self._username} did not finish in {ACTION_TIMEOUT}s ({self._peer})")
-            message = "Door mechanism did not finish in time. This is worrying! Ask Ronja or Nicole"
+        except PhysicalProblem:
+            log.error(f"{self._username} resulted in physical malfunction ({self._peer})")
+            message = "Door mechanism had a physical malfunction. This is bad! Ask Ronja or Nicole"
+        except DoorMisconfig:
+            log.error(f"{self._username} hit a misconfigured door ({self._peer})")
+            message = "The door configured wrong. This can be fixed in admin mode but please mode ask Ronja or Nicole"
+        except WriterGone:
+            log.info(f"{self._username} disconnected mid action ({self._peer})")
+            message = "Client disconnected."
         except Exception:
             log.exception(f"{self._username} failed for {self._peer}")
         else:
@@ -82,8 +111,9 @@ class DoorSession(asyncssh.SSHServerSession):
 
 
 class DoorServer(asyncssh.SSHServer):
-    def __init__(self, keystore: KeyStore, greeting: str) -> None:
+    def __init__(self, keystore: KeyStore, actions: dict[str, DoorAction], greeting: str) -> None:
         self._keystore = keystore
+        self._actions = actions
         self._peer = None
         self._greeting = greeting
         self._conn: asyncssh.SSHServerConnection | None = None
@@ -95,7 +125,7 @@ class DoorServer(asyncssh.SSHServer):
 
     def begin_auth(self, username: str) -> bool:
         assert self._conn is not None
-        if username in ALLOWED:
+        if username in self._actions:
             self._conn.send_auth_banner(self._greeting)
         else:
             # No keys means no public key can validate means auth fails.
@@ -116,14 +146,17 @@ class DoorServer(asyncssh.SSHServer):
 
     def session_requested(self) -> asyncssh.SSHServerSession:
         assert self._conn is not None
-        return DoorSession(self._conn.get_extra_info("username"), self._peer)
+        username = self._conn.get_extra_info("username")
+        return DoorSession(username, self._actions[username], self._peer)
 
 
-async def listen(keystore: KeyStore, config: dict, greeting: str) -> asyncssh.SSHAcceptor:
+async def listen(
+    keystore: KeyStore, actions: dict[str, DoorAction], config: dict, greeting: str
+) -> asyncssh.SSHAcceptor:
     return await asyncssh.listen(
         host=config["listen_address"],
         port=config["port"],
-        server_factory=lambda: DoorServer(keystore, greeting),
+        server_factory=lambda: DoorServer(keystore, actions, greeting),
         server_host_keys=[config["host_key"]],
         login_timeout=20,
         keepalive_interval=15,

@@ -29,6 +29,8 @@
     "d /var/lib/xdoor2/secrets 0750 root xdoor2 -"
     # Empty key cache on a new card but f does not overwrite an existing cache
     "f /data/xdoor2/authorized_keys 0640 xdoor2 xdoor2 -"
+    # Same deal for travel distance. 0 means uncalibrated
+    "f /data/xdoor2/door_distance 0640 xdoor2 xdoor2 - 0"
   ];
 
   systemd.services.xdoor2 = {
