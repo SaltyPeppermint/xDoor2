@@ -4,14 +4,13 @@ xDoor2 is the Python rewrite of the xHain door controller.
 
 ## Build the image
 
-On an `aarch64-linux` machine:
-
 ```sh
 nix develop
 make image
 ```
 
-The compressed SD image is written below:
+On an `aarch64-linux` machine this builds natively and the image is written to `result/sd-image/`.
+Flash with:
 
 ```sh
 make flash DEVICE=/dev/your-sd-card
@@ -20,41 +19,30 @@ make flash DEVICE=/dev/your-sd-card
 `flash` overwrites the selected device!
 The root partition grows to fill the card on first boot.
 
-### Build on an Apple Silicon Mac
+### MacOS Weirdness
 
-NixOS images contain Linux/aarch64 binaries, so the build needs an
-`aarch64-linux` builder. Use the container command below:
+NixOS images contain Linux/aarch64 binaries so the build needs an `aarch64-linux` builder.
+On MacOS `make image` therefore runs inside a container and copies the image to `output/nixos/`.
+`make flash` can then just use it.
+
+Override the runtime and the resources it gets:
 
 ```sh
-container run --rm --cpus 8 --memory 12G \
-  --volume "$PWD:/workspace" \
-  --workdir /workspace \
-  docker.io/nixos/nix:latest \
-  sh -lc '
-    git config --global --add safe.directory /workspace
-    nix --extra-experimental-features "nix-command flakes" \
-      build path:.#image --out-link /tmp/xdoor-result
-    mkdir -p output/nixos
-    cp /tmp/xdoor-result/sd-image/*.img.zst output/nixos/
-  '
+make image CONTAINER=docker CONTAINER_CPUS=4 CONTAINER_MEMORY=8G
 ```
-
-Should work the same with any other docker container thingy.
-
-The syslink fix is necessary to not end up with a broken image.
 
 ## First boot and secrets
 
 The image starts administrative OpenSSH on port 23 as user `admin`.
-It does not put decrypted MQTT credentials or application keys in the Nix store or SD
-image. After the first boot, you need to provision them over SSH:
+It does not put decrypted MQTT credentials or application keys in the Nix store or SD image.
+After the first boot, you need to provision them over SSH:
 
 ```sh
 nix develop
 make provision
 ```
 
-The xDoor service starts once both required secret files exist.
+The xDoor2 service starts once both required secret files exist.
 NixOS creates the device SSH host key on first boot.
 The application reuses that key through a systemd credential.
 

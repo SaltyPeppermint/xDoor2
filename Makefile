@@ -7,26 +7,59 @@ SSH_PORT ?= 23
 SSH_DEST := admin@$(HOST)
 NIX_SSHOPTS := -p $(SSH_PORT)
 RESULT ?= $(PROJECT_ROOT)/result
-IMAGE ?= $(firstword $(wildcard $(RESULT)/sd-image/*.img.zst) $(wildcard $(PROJECT_ROOT)/output/nixos/*.img.zst))
+OUTPUT_DIR := $(PROJECT_ROOT)/output/nixos
+IMAGE ?= $(firstword $(wildcard $(RESULT)/sd-image/*.img.zst) $(wildcard $(OUTPUT_DIR)/*.img.zst))
+
+UNAME_S := $(shell uname -s)
+CONTAINER ?= $(firstword $(foreach c,container docker podman,$(if $(shell command -v $(c) 2>/dev/null),$(c))))
+CONTAINER_IMAGE ?= docker.io/nixos/nix:latest
+CONTAINER_CPUS ?= 8
+CONTAINER_MEMORY ?= 12G
 
 .DEFAULT_GOAL := help
 
-.PHONY: help image check-image flash deploy generate-secrets provision shell test lint format clean
+.PHONY: help image image-native image-container check-image flash deploy generate-secrets provision shell test lint format clean
 
 help:
 	@echo "xDoor2 targets:"
 	@echo "  image             Build the compressed NixOS Raspberry Pi image"
+	@echo "                    (on non-Linux hosts through $(or $(CONTAINER),a container runtime))"
 	@echo "  flash             Write the image to DEVICE=/dev/..."
 	@echo "  provision         Install decrypted runtime secrets on a booted device"
 	@echo "  deploy            Switch a booted device to this NixOS configuration"
 	@echo "  shell             Open the administrative SSH console"
 	@echo "  test/lint/format  Run Python development checks through uv"
 
-image:
+ifeq ($(UNAME_S),Linux)
+image: image-native
+else
+image: image-container
+endif
+
+image-native:
 	nix build "path:$(PROJECT_ROOT)#image" --out-link "$(RESULT)"
 
+# The link has to stay outside the bind mount otherwise this would result in a broken symlink to the hosts nix store
+image-container:
+	@test -n "$(CONTAINER)" || { echo "No container runtime found. Install one or set CONTAINER=..." >&2; exit 1; }
+	$(CONTAINER) run --rm --cpus $(CONTAINER_CPUS) --memory $(CONTAINER_MEMORY) \
+		--volume "$(PROJECT_ROOT):/workspace" \
+		--workdir /workspace \
+		$(CONTAINER_IMAGE) \
+		sh -lc ' \
+		  set -eu; \
+		  git config --global --add safe.directory /workspace; \
+		  nix --extra-experimental-features "nix-command flakes" \
+		    build path:.#image --out-link /tmp/xdoor2-result; \
+		  mkdir -p output/nixos; \
+		  rm -f output/nixos/*.img.zst; \
+		  cp /tmp/xdoor2-result/sd-image/*.img.zst output/nixos/; \
+		  chmod 644 output/nixos/*.img.zst; \
+		'
+	@ls -1 "$(OUTPUT_DIR)"/*.img.zst
+
 check-image:
-	@test -n "$(IMAGE)" || { echo "No SD image found. Run 'make image' or the documented Mac container build first." >&2; exit 1; }
+	@test -n "$(IMAGE)" || { echo "No SD image found. Run 'make image' first." >&2; exit 1; }
 
 flash: check-image
 	@test -n "$(DEVICE)" || { echo "Set DEVICE to the target block device." >&2; exit 1; }
