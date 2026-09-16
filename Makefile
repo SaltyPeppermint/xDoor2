@@ -9,6 +9,7 @@ NIX_SSHOPTS := -p $(SSH_PORT)
 RESULT ?= $(PROJECT_ROOT)/result
 OUTPUT_DIR := $(PROJECT_ROOT)/output/nixos
 IMAGE ?= $(firstword $(wildcard $(RESULT)/sd-image/*.img.zst) $(wildcard $(OUTPUT_DIR)/*.img.zst))
+NIX_FILES := flake.nix $(wildcard nixos/*.nix)
 
 UNAME_S := $(shell uname -s)
 CONTAINER ?= $(firstword $(foreach c,container docker podman,$(if $(shell command -v $(c) 2>/dev/null),$(c))))
@@ -28,12 +29,24 @@ help:
 	@echo "  provision         Install decrypted runtime secrets on a booted device"
 	@echo "  deploy            Switch a booted device to this NixOS configuration"
 	@echo "  shell             Open the administrative SSH console"
+	@echo "  generate-secrets  Decrypt build-time secrets into secrets/ and priv/"
+	@echo "  check-image       Check a built SD image is present"
 	@echo "  test/lint/format  Run Python development checks through uv"
+	@echo "  clean             Remove build outputs and decrypted secrets"
 
 ifeq ($(UNAME_S),Linux)
 image: image-native
 else
 image: image-container
+endif
+
+# MacOS thinks its special about writing to mounted disks and you have to do a little dance
+ifeq ($(UNAME_S),Darwin)
+UNMOUNT = diskutil unmountDisk "$(DEVICE)"
+DD_DEVICE = $(patsubst /dev/disk%,/dev/rdisk%,$(DEVICE))
+else
+UNMOUNT = :
+DD_DEVICE = $(DEVICE)
 endif
 
 image-native:
@@ -63,7 +76,8 @@ check-image:
 
 flash: check-image
 	@test -n "$(DEVICE)" || { echo "Set DEVICE to the target block device." >&2; exit 1; }
-	zstd -dc "$(IMAGE)" | sudo dd of="$(DEVICE)" bs=4194304
+	$(UNMOUNT)
+	zstd -dc "$(IMAGE)" | sudo dd of="$(DD_DEVICE)" bs=4194304
 	sync
 
 deploy:
@@ -99,7 +113,9 @@ lint:
 format:
 	uv run ruff format .
 	uv run ruff check --fix .
-	nix fmt flake.nix nixos/admin-keys.nix nixos/package.nix nixos/rpi3-image.nix nixos/xdoor2.nix
+	nix fmt $(NIX_FILES)
 
 clean:
 	rm -f "$(RESULT)"
+	rm -rf "$(PROJECT_ROOT)/output"
+	rm -f "$(PROJECT_ROOT)"/secrets/mqtt_pw "$(PROJECT_ROOT)"/priv/authorized_keys_pub.pem

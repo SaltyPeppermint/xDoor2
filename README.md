@@ -24,11 +24,12 @@ The root partition grows to fill the card on first boot.
 NixOS images contain Linux/aarch64 binaries so the build needs an `aarch64-linux` builder.
 On MacOS `make image` therefore runs inside a container and copies the image to `output/nixos/`.
 `make flash` can then just use it.
+It will also unmount the card (MacOS will not write to a mounted volume) and writes through the raw `/dev/rdiskN` node, (faster than `/dev/diskN`).
 
 Override the runtime and the resources it gets:
 
 ```sh
-make image CONTAINER=docker CONTAINER_CPUS=4 CONTAINER_MEMORY=8G
+make image DEVICE=/dev/disk4 CONTAINER=docker CONTAINER_CPUS=4 CONTAINER_MEMORY=8G
 ```
 
 ## First boot and secrets
