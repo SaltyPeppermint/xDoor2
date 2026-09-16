@@ -5,8 +5,6 @@ from contextlib import asynccontextmanager
 from enum import Enum, auto
 from pathlib import Path
 
-from gpiozero import GPIOZeroError
-
 from xdoor2.helpers import DoorAction, ReadLine, WriteLine
 from xdoor2.stepper import StepperDriver
 
@@ -29,10 +27,6 @@ ADMIN_HELP = """Commands:
 
 class DoorBusy(TimeoutError):
     """Another request held the door for longer than the timeout"""
-
-
-class PhysicalProblem(Exception):
-    """Error during physical door action"""
 
 
 class DoorMisconfig(Exception):
@@ -65,7 +59,7 @@ class Door:
             write("Starting door unlocking")
             match self._state:
                 case DoorState.LOCKED:
-                    await self._move(-self._travel_distance())
+                    self._motor._move(-self._travel_distance())
                     self._state = DoorState.UNLOCKED
                     return "Door locked!"
                 case DoorState.UNLOCKED:
@@ -79,7 +73,7 @@ class Door:
             write("Starting door locking")
             match self._state:
                 case DoorState.UNLOCKED:
-                    await self._move(self._travel_distance())
+                    self._motor._move(self._travel_distance())
                     self._state = DoorState.LOCKED
                     return "Door locked!"
                 case DoorState.LOCKED:
@@ -137,7 +131,7 @@ class Door:
                 case ["edit", *_]:
                     write("Edit requires positive int as second arg")
                 case ["move", value] if (steps := _parse_steps(value)) is not None:
-                    await self._move(steps)
+                    self._motor.steps(steps)
                     traveled += steps
                     write(f"Moved {steps} steps, {traveled} in total. Use 'commit' to commit it.")
                 case ["move", *_]:
@@ -159,14 +153,6 @@ class Door:
             yield
         finally:
             self._lock.release()
-
-    async def _move(self, steps: int) -> None:
-        if steps == 0:
-            return
-        try:
-            self._motor.steps(steps)
-        except GPIOZeroError as exc:
-            raise PhysicalProblem(f"motor could not run {steps}") from exc
 
     def _travel_distance(self) -> int:
         """Ugly hand rolled cache"""

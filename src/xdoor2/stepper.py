@@ -28,6 +28,8 @@ class StepperDriver(CompositeDevice):
 
     def steps(self, steps: int) -> None:
         """Move steps. Negative steps run backwards."""
+        if steps == 0:
+            return
         self.dir.value = steps > 0
         self.ena.on()
         time.sleep(0.002)

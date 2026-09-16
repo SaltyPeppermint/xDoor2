@@ -3,9 +3,10 @@ import contextlib
 import logging
 
 import asyncssh
+from gpiozero import GPIOZeroError
 
 from xdoor2.helpers import DoorAction, WriterGone
-from xdoor2.lock_control import DoorBusy, DoorMisconfig, PhysicalProblem, StateMachineIssue
+from xdoor2.lock_control import DoorBusy, DoorMisconfig, StateMachineIssue
 from xdoor2.ssh_keys import KeyStore
 
 log = logging.getLogger(__name__)
@@ -82,9 +83,9 @@ class DoorSession(asyncssh.SSHServerSession):
         except StateMachineIssue:
             log.warning(f"{self._username} tried lock/unlock in maintainance mode ({self._peer})")
             message = "Somehow the state machine was in maintainance mode during a lock/unlock"
-        except PhysicalProblem:
-            log.error(f"{self._username} resulted in physical malfunction ({self._peer})")
-            message = "Door mechanism had a physical malfunction. This is bad! Ask Ronja or Nicole"
+        except GPIOZeroError:
+            log.error(f"{self._username} made the GPIO pins weird ({self._peer})")
+            message = "Door GPIO pins had a physical malfunction. This is bad! Ask Ronja or Nicole"
         except DoorMisconfig:
             log.error(f"{self._username} hit a misconfigured door ({self._peer})")
             message = "The door configured wrong. This can be fixed in admin mode but please mode ask Ronja or Nicole"
