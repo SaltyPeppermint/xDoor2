@@ -1,16 +1,24 @@
 import time
 
 from gpiozero import CompositeDevice, OutputDevice
+from gpiozero.pins import Factory
 
 
 class StepperDriver(CompositeDevice):
     """Stepper driver driver"""
 
-    def __init__(self, pul, dir, enable, step_time=0.002, pin_factory=None) -> None:
+    def __init__(
+        self,
+        pul: int,
+        dir: int,
+        ena: int,
+        step_time: float = 0.002,
+        pin_factory: Factory | None = None,
+    ) -> None:
         devices = {
             "pul": OutputDevice(pul, initial_value=False),
             "dir": OutputDevice(dir, initial_value=False),
-            "enable": OutputDevice(enable, active_high=True, initial_value=False),
+            "ena": OutputDevice(ena, active_high=True, initial_value=False),
         }
 
         super().__init__(_order=tuple(devices), pin_factory=pin_factory, **devices)
@@ -21,7 +29,7 @@ class StepperDriver(CompositeDevice):
     def steps(self, steps: int) -> None:
         """Move steps. Negative steps run backwards."""
         self.dir.value = steps > 0
-        self.enable.on()
+        self.ena.on()
         time.sleep(0.002)
         try:
             for _ in range(abs(steps)):
@@ -32,4 +40,4 @@ class StepperDriver(CompositeDevice):
                 self.position += 1 if steps > 0 else -1
         finally:
             self.pul.off()
-            self.enable.off()
+            self.ena.off()
