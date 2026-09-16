@@ -6,11 +6,11 @@ readme = "README.md"
 authors = [{ name = "Nicole Heinimann", email = "nicole@heinimann.de" }]
 requires-python = ">=3.13"
 dependencies = [
-    "asyncssh>=2.22.0",                      # replaces :ssh.daemon
-    "cryptography>=47.0.0",                  # replaces ExPublicKey / ex_crypto
-    "gpiod>=2.2.0; sys_platform == 'linux'", # replaces Circuits.GPIO
-    "httpx>=0.28.1",                         # replaces Req
-    "paho-mqtt>=2.1.0",                      # replaces ex_homeassistant
+    "asyncssh>=2.22.0",
+    "cryptography>=47.0.0",  # replaces ExPublicKey / ex_crypto
+    "gpiozero>=2.0.1.post3",
+    "httpx>=0.28.1",
+    "paho-mqtt>=2.1.0",      # for homeasssitant
 ]
 
 [project.scripts]
