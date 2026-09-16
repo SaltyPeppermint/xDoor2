@@ -5,9 +5,10 @@ from contextlib import asynccontextmanager
 from enum import Enum, auto
 from pathlib import Path
 
-from gpiozero import GPIOZeroError, PhaseEnableMotor
+from gpiozero import GPIOZeroError
 
 from xdoor2.helpers import DoorAction, ReadLine, WriteLine
+from xdoor2.stepper import AsyncStepper
 
 log = logging.getLogger(__name__)
 
@@ -19,9 +20,9 @@ class DoorState(Enum):
 
 
 ADMIN_HELP = """Commands:
-  move {seconds}   run the motor for {seconds}, a negative value runs it backwards
+  move {steps}     run the motor for {steps}, a negative value runs it backwards
   commit           save what this session moved as the travel distance
-  edit {seconds}   set the travel distance directly
+  edit {steps}     set the travel distance directly
   help             help help help
   exit             leave admin mode"""
 
@@ -40,11 +41,11 @@ class DoorMisconfig(Exception):
 
 class Door:
     def __init__(self, config: dict, *, distance_file: Path) -> None:
-        self._motor = PhaseEnableMotor(config["phase_line"], config["enable_line"])
+        self._motor = AsyncStepper(2048, config["phase_line"], config["enable_line"])
         self._distance_file = distance_file
         self._lock = asyncio.Lock()
         self._state = DoorState.LOCKED
-        self._distance: float | None = None
+        self._distance: int | None = None
 
     @property
     def state(self) -> DoorState:
@@ -58,8 +59,7 @@ class Door:
         async with self._hold():
             log.debug("Starting door unlocking")
             write("Starting door unlocking")
-            await self._move(-self._travel_seconds())
-            await asyncio.sleep(0.5)
+            await self._move(-self._travel_steps())
             self._state = DoorState.UNLOCKED
         return "Door unlocked!"
 
@@ -67,8 +67,7 @@ class Door:
         async with self._hold():
             log.debug("Starting door locking")
             write("Starting door locking")
-            await self._move(self._travel_seconds())
-            await asyncio.sleep(0.5)
+            await self._move(self._travel_steps())
             self._state = DoorState.LOCKED
         return "Door locked!"
 
@@ -91,8 +90,8 @@ class Door:
         for line in ADMIN_HELP.splitlines():
             write(line)
 
-        # Movement seconds from where the door is now
-        traveled = 0.0
+        # Movement steps from where the door is now
+        traveled = 0
         while True:
             line = await read(300)
             if line is None:
@@ -111,22 +110,22 @@ class Door:
                     if traveled <= 0:
                         write("Nothing moved, nothing to commit.")
                         continue
-                    self._set_travel_seconds(traveled)
+                    self._set_travel_steps(traveled)
                     write(f"Travel distance is now {traveled}s.")
-                case ["edit", value] if (seconds := _parse_seconds(value)) is not None:
-                    if seconds <= 0:
+                case ["edit", value] if (steps := _parse_steps(value)) is not None:
+                    if steps <= 0:
                         write("Please give *positive* values for the travel time.")
                         continue
-                    self._set_travel_seconds(seconds)
-                    write(f"Travel distance is now {seconds}s.")
+                    self._set_travel_steps(steps)
+                    write(f"Travel distance is now {steps}s.")
                 case ["edit", *_]:
-                    write("Edit requires positive floats as second arg")
-                case ["move", value] if (seconds := _parse_seconds(value)) is not None:
-                    await self._move(seconds)
-                    traveled += seconds
-                    write(f"Moved {seconds}s, {traveled}s in total. Use 'commit' to commit it.")
+                    write("Edit requires positive int as second arg")
+                case ["move", value] if (steps := _parse_steps(value)) is not None:
+                    await self._move(steps)
+                    traveled += steps
+                    write(f"Moved {steps} steps, {traveled} in total. Use 'commit' to commit it.")
                 case ["move", *_]:
-                    write("'move' requires a float as second arg. (negative = backwards)")
+                    write("'move' requires a int as second arg. (negative = backwards)")
                 case _:
                     write("Unknown command, try 'help'")
 
@@ -145,39 +144,34 @@ class Door:
         finally:
             self._lock.release()
 
-    async def _move(self, seconds: float) -> None:
-        if seconds == 0:
+    async def _move(self, steps: int) -> None:
+        if steps == 0:
             return
         try:
-            if seconds > 0:
-                self._motor.forward()
-            else:
-                self._motor.backward()
-            await asyncio.sleep(abs(seconds))
-            self._motor.stop()
+            await self._motor.step(steps)
         except GPIOZeroError as exc:
-            raise PhysicalProblem(f"motor could not run for {seconds}s") from exc
+            raise PhysicalProblem(f"motor could not run {steps}") from exc
 
-    def _travel_seconds(self) -> float:
+    def _travel_steps(self) -> int:
         """Ugly hand rolled cache"""
         if self._distance is not None:
             return self._distance
 
-        distance = float(self._distance_file.read_text().strip())
+        distance = int(self._distance_file.read_text().strip())
         if distance <= 0:
             raise DoorMisconfig(f"{self._distance_file} holds {distance}, the door is uncalibrated")
 
         self._distance = distance
         return distance
 
-    def _set_travel_seconds(self, distance: float) -> None:
+    def _set_travel_steps(self, distance: int) -> None:
         self._distance_file.write_text(f"{distance}\n")
         self._distance = distance
         log.info(f"travel distance set to {distance}s")
 
 
-def _parse_seconds(value: str) -> float | None:
+def _parse_steps(value: str) -> int | None:
     try:
-        return float(value)
+        return int(value)
     except ValueError:
         return None
