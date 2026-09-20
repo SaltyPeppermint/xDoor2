@@ -2,27 +2,19 @@ import asyncio
 import time
 
 from gpiozero import CompositeDevice, OutputDevice
-from gpiozero.pins import Factory
 
 
 class StepperDriver(CompositeDevice):
     """Stepper driver driver"""
 
-    def __init__(
-        self,
-        pul: int,
-        dir: int,
-        ena: int,
-        step_time: float = 0.002,
-        pin_factory: Factory | None = None,
-    ) -> None:
+    def __init__(self, pul: int, dir: int, ena: int, step_time: float = 0.002) -> None:
         devices = {
             "pul": OutputDevice(pul, initial_value=False),
             "dir": OutputDevice(dir, initial_value=False),
             "ena": OutputDevice(ena, active_high=True, initial_value=False),
         }
 
-        super().__init__(_order=tuple(devices), pin_factory=pin_factory, **devices)
+        super().__init__(_order=tuple(devices), **devices)
 
         self.step_time = step_time
         self.position = 0

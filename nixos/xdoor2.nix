@@ -52,7 +52,11 @@
     unitConfig.ConditionPathExists = [
       # "/var/lib/xdoor2/secrets/mqtt_password"
     ];
-    environment.XDOOR_CONFIG = "/etc/xdoor2/config.toml";
+    environment = {
+      XDOOR_CONFIG = "/etc/xdoor2/config.toml";
+      # Pin the gpiozero backend
+      GPIOZERO_PIN_FACTORY = "lgpio";
+    };
     serviceConfig = {
       Type = "simple";
       User = "xdoor2";

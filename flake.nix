@@ -47,6 +47,8 @@
 
           shellHook = ''
             export LANG=C.UTF-8
+            # No real GPIO on a dev machine so we use gpiozero's MockFactory
+            export GPIOZERO_PIN_FACTORY=mock
           '';
         };
 

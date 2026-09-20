@@ -6,6 +6,7 @@
   cryptography,
   gpiozero,
   httpx,
+  lgpio,
   paho-mqtt,
 }:
 
@@ -29,6 +30,9 @@ buildPythonApplication {
     cryptography
     gpiozero
     httpx
+    # gpiozero ships no GPIO backend of its own.
+    # lgpio is the most widely supported one to /dev/gpiochip0
+    lgpio
     paho-mqtt
   ];
 
