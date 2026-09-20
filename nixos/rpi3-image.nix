@@ -90,22 +90,19 @@
   environment.defaultPackages = lib.mkForce [ ];
   environment.systemPackages = with pkgs; [
     libgpiod
-    vim
     ghostty.terminfo
     neovim
     curl
-    helix
     tmux
-    zellij
     ripgrep
     fd
-    jq
     file
     unzip
     dnsutils
     ncdu
     tree
     iotop
+    btop
     lm_sensors
     libraspberrypi
   ];
