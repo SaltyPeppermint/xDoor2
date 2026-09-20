@@ -56,6 +56,9 @@
       XDOOR_CONFIG = "/etc/xdoor2/config.toml";
       # Pin the gpiozero backend
       GPIOZERO_PIN_FACTORY = "lgpio";
+      # lgpio creates its notification FIFO (.lgd-nfy*) in $LG_WD, but falls back to /
+      # We cant read root so we need to fix this to smth it can read
+      LG_WD = "/run/xdoor2";
     };
     serviceConfig = {
       Type = "simple";
@@ -63,6 +66,9 @@
       Group = "xdoor2";
       SupplementaryGroups = [ "gpio" ];
       ExecStart = lib.getExe xdoor2Package;
+      RuntimeDirectory = "xdoor2";
+      RuntimeDirectoryMode = "0700";
+      WorkingDirectory = "/run/xdoor2";
       Restart = "on-failure";
       RestartSec = "2s";
       TimeoutStopSec = "10s";
@@ -98,10 +104,7 @@
       ];
       RestrictRealtime = true;
       LockPersonality = true;
-      ReadWritePaths = [
-        "/data/xdoor2"
-        "/run"
-      ];
+      ReadWritePaths = [ "/data/xdoor2" ];
     };
   };
 }
