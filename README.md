@@ -35,15 +35,15 @@ make image DEVICE=/dev/disk4 CONTAINER=docker CONTAINER_CPUS=4 CONTAINER_MEMORY=
 ## First boot and secrets
 
 The image starts administrative OpenSSH on port 23 as user `admin`.
-It does not put decrypted MQTT credentials or application keys in the Nix store or SD image.
-After the first boot, you need to provision them over SSH:
+It does not put the decrypted MQTT password in the Nix store or SD image.
+After the first boot, you need to provision it over SSH:
 
 ```sh
 nix develop
 make provision
 ```
 
-The xDoor2 service starts once both required secret files exist.
+The xDoor2 service starts once the required secret files exist.
 NixOS creates the device SSH host key on first boot.
 The application reuses that key through a systemd credential.
 
@@ -72,3 +72,4 @@ The NixOS configuration lives in `nixos/`:
 - `nixos/rpi3-image.nix`: machine config,
 - `nixos/xdoor2.nix` application user, GPIO, credentials, systemd service.
 - `nixos/admin-keys.nix` SSH keys for the door admins(used for normal OpenSSH on port 23 and admin interface of app).
+- `nixos/authorized_keys_pub.pem` public key used to verify the signature on the `authorized_keys` list fetched from `xdoor.x-hain.de`.

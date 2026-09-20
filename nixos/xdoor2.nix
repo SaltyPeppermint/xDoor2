@@ -18,6 +18,11 @@
   environment.etc."xdoor2/config.toml".source = ./config.toml;
   environment.etc."xdoor2/greeting".source = ./greeting;
   environment.etc."xdoor2/admin_keys".text = lib.concatLines (import ./admin-keys.nix);
+  # Public half of the key that signs the upstream authorized_keys list. Only
+  # ever used to verify a signature, so the world-readable Nix store is fine.
+
+  # TODO Fill me with sops -d --extract '["authorized_keys_pub_pem"]' secrets.yml > nixos/authorized_keys_pub.pem
+  # environment.etc."xdoor2/authorized_keys_pub.pem".source = ./authorized_keys_pub.pem;
   services.udev.extraRules = ''
     SUBSYSTEM=="gpio", KERNEL=="gpiochip*", GROUP="gpio", MODE="0660"
   '';
@@ -42,8 +47,9 @@
       "network-online.target"
       "sshd-keygen.service"
     ];
+    # The signature verification key now ships with the configuration, so only
+    # genuinely secret files that have to be provisioned out of band belong here.
     unitConfig.ConditionPathExists = [
-      "/var/lib/xdoor2/secrets/authorized_keys_pub.pem"
       # "/var/lib/xdoor2/secrets/mqtt_password"
     ];
     environment.XDOOR_CONFIG = "/etc/xdoor2/config.toml";

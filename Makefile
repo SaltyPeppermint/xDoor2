@@ -29,7 +29,7 @@ help:
 	@echo "  provision         Install decrypted runtime secrets on a booted device"
 	@echo "  deploy            Switch a booted device to this NixOS configuration"
 	@echo "  shell             Open the administrative SSH console"
-	@echo "  generate-secrets  Decrypt build-time secrets into secrets/ and priv/"
+	@echo "  generate-secrets  Decrypt build-time secrets into secrets/"
 	@echo "  check-image       Check a built SD image is present"
 	@echo "  test/lint/format  Run Python development checks through uv"
 	@echo "  clean             Remove build outputs and decrypted secrets"
@@ -87,17 +87,15 @@ deploy:
 		--use-remote-sudo
 
 generate-secrets:
-	mkdir -p secrets priv
+	mkdir -p secrets
 	sops -d --extract '["mqtt_password"]' secrets.yml > secrets/mqtt_pw
-	sops -d --extract '["authorized_keys_pub_pem"]' secrets.yml > priv/authorized_keys_pub.pem
 
 provision: generate-secrets
-	scp -P "$(SSH_PORT)" secrets/mqtt_pw priv/authorized_keys_pub.pem "$(SSH_DEST):/tmp/"
+	scp -P "$(SSH_PORT)" secrets/mqtt_pw "$(SSH_DEST):/tmp/"
 	ssh -p "$(SSH_PORT)" "$(SSH_DEST)" \
 		"sudo install -d -m 0750 -o root -g xdoor2 /var/lib/xdoor2/secrets && \
 		 sudo install -m 0440 -o root -g xdoor2 /tmp/mqtt_pw /var/lib/xdoor2/secrets/mqtt_password && \
-		 sudo install -m 0440 -o root -g xdoor2 /tmp/authorized_keys_pub.pem /var/lib/xdoor2/secrets/authorized_keys_pub.pem && \
-		 rm -f /tmp/mqtt_pw /tmp/authorized_keys_pub.pem && \
+		 rm -f /tmp/mqtt_pw && \
 		 sudo systemctl restart xdoor2"
 
 shell:
@@ -118,4 +116,4 @@ format:
 clean:
 	rm -f "$(RESULT)"
 	rm -rf "$(PROJECT_ROOT)/output"
-	rm -f "$(PROJECT_ROOT)"/secrets/mqtt_pw "$(PROJECT_ROOT)"/priv/authorized_keys_pub.pem
+	rm -f "$(PROJECT_ROOT)"/secrets/mqtt_pw
