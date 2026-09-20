@@ -77,7 +77,7 @@ check-image:
 flash: check-image
 	@test -n "$(DEVICE)" || { echo "Set DEVICE to the target block device." >&2; exit 1; }
 	$(UNMOUNT)
-	zstd -dc "$(IMAGE)" | sudo dd of="$(DD_DEVICE)" bs=4194304
+	zstd -dc "$(IMAGE)" | sudo dd of="$(DD_DEVICE)" bs=4194304 status=progress
 	sync
 
 deploy:
