@@ -56,7 +56,7 @@ class KeyStore:
         Path(self._config["cache_file"]).write_bytes(raw)
         self._keys = keys
         self._raw = raw
-        log.info("authorized keys changed")
+        log.info(f"authorized keys changed: now {self._raw.count(b'\n') + 1} entries")
 
     def start(self) -> None:
         if self._task is None or self._task.done():
