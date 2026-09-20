@@ -38,13 +38,29 @@
     "f /data/xdoor2/door_distance 0640 xdoor2 xdoor2 - 0"
   ];
 
+  # The Raspi has no clock so the system start thinking it is in the past.
+  # This means every HTTPS request (authorized_keys fetch) fails
+  # until timesyncd has talked to an NTP server.
+  systemd.additionalUpstreamSystemUnits = [ "systemd-time-wait-sync.service" ];
+  systemd.services.systemd-time-wait-sync = {
+    # Prevent system hang if no ntp server is reachable
+    serviceConfig.TimeoutStartSec = "120s";
+  };
+
   systemd.services.xdoor2 = {
     description = "xDoor2 controller";
     documentation = [ "https://github.com/xHain/xDoor2" ];
     wantedBy = [ "multi-user.target" ];
-    wants = [ "network-online.target" ];
+    wants = [
+      "network-online.target"
+      # Wants, not requires: if the clock never syncs we still start and let the
+      # key refresh loop retry, rather than leaving the door without a controller.
+      "systemd-time-wait-sync.service"
+    ];
     after = [
       "network-online.target"
+      "systemd-time-wait-sync.service"
+      "time-sync.target"
       "sshd-keygen.service"
     ];
     # The signature verification key now ships with the configuration, so only
