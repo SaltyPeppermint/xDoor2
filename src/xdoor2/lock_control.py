@@ -61,7 +61,7 @@ class Door:
                 case DoorState.LOCKED:
                     await self._motor.steps(-self._travel_distance())
                     self._state = DoorState.UNLOCKED
-                    return "Door locked!"
+                    return "Door unlocked!"
                 case DoorState.UNLOCKED:
                     return "Door was already unlocked!"
                 case DoorState.MAINTENANCE:
