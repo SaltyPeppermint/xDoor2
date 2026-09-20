@@ -88,9 +88,26 @@
   # The upstream SD-card profile includes a broad set of installer and rescue
   # tools. Keep the appliance image focused on what is useful on the door Pi.
   environment.defaultPackages = lib.mkForce [ ];
-  environment.systemPackages = [
-    pkgs.libgpiod
-    pkgs.vim
+  environment.systemPackages = with pkgs; [
+    libgpiod
+    vim
+    ghostty.terminfo
+    neovim
+    curl
+    helix
+    tmux
+    zellij
+    ripgrep
+    fd
+    jq
+    file
+    unzip
+    dnsutils
+    ncdu
+    tree
+    iotop
+    lm_sensors
+    libraspberrypi
   ];
   documentation.enable = false;
   documentation.nixos.enable = false;
