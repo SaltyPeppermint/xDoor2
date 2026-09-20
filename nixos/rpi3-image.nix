@@ -80,15 +80,18 @@
     '';
   };
 
+  # Boot on the firmware's device tree instead that of the kernel.
+  # Only the firmware's has the board data gpiozero needs (/system/linux,revision).
+  # This means the dtb no longer follows the kernel.
+  # Should not be a problem, and worst case we rebuild and reflash
+  boot.loader.generic-extlinux-compatible.useGenerationDeviceTree = false;
+
   boot.kernelParams = [ "console=tty1" ];
   boot.kernel.sysctl."kernel.panic" = 10;
   boot.supportedFilesystems = lib.mkForce [
     "ext4"
     "vfat"
   ];
-
-  # The upstream SD-card profile includes a broad set of installer and rescue
-  # tools. Keep the appliance image focused on what is useful on the door Pi.
   environment.defaultPackages = lib.mkForce [ ];
   environment.systemPackages = with pkgs; [
     libgpiod
