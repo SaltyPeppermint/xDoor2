@@ -44,7 +44,7 @@
     ];
     unitConfig.ConditionPathExists = [
       "/var/lib/xdoor2/secrets/authorized_keys_pub.pem"
-      "/var/lib/xdoor2/secrets/mqtt_password"
+      # "/var/lib/xdoor2/secrets/mqtt_password"
     ];
     environment.XDOOR_CONFIG = "/etc/xdoor2/config.toml";
     serviceConfig = {
@@ -59,7 +59,7 @@
 
       LoadCredential = [
         "ssh_host_key:/etc/ssh/ssh_host_ed25519_key"
-        "mqtt_password:/var/lib/xdoor2/secrets/mqtt_password"
+        # "mqtt_password:/var/lib/xdoor2/secrets/mqtt_password"
       ];
 
       CapabilityBoundingSet = [
