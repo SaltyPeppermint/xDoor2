@@ -59,6 +59,8 @@
   # the Buildroot image did. These commands extend the module's config.txt.
   image.baseName = "xdoor2-nixos-${config.system.nixos.label}-${pkgs.stdenv.hostPlatform.system}";
   sdImage = {
+    # Do not compress and uncompress uneccessarily
+    compressImage = false;
     populateFirmwareCommands = lib.mkAfter ''
       mkdir -p firmware/overlays
       cp ${pkgs.raspberrypifw}/share/raspberrypi/boot/overlays/miniuart-bt.dtbo firmware/overlays/

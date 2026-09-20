@@ -43,7 +43,6 @@
             sops
             ty
             uv
-            zstd
           ];
 
           shellHook = ''

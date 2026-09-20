@@ -8,7 +8,7 @@ SSH_DEST := admin@$(HOST)
 NIX_SSHOPTS := -p $(SSH_PORT)
 RESULT ?= $(PROJECT_ROOT)/result
 OUTPUT_DIR := $(PROJECT_ROOT)/output/nixos
-IMAGE ?= $(firstword $(wildcard $(RESULT)/sd-image/*.img.zst) $(wildcard $(OUTPUT_DIR)/*.img.zst))
+IMAGE ?= $(firstword $(wildcard $(RESULT)/sd-image/*.img) $(wildcard $(OUTPUT_DIR)/*.img))
 NIX_FILES := flake.nix $(wildcard nixos/*.nix)
 
 UNAME_S := $(shell uname -s)
@@ -23,7 +23,7 @@ CONTAINER_MEMORY ?= 12G
 
 help:
 	@echo "xDoor2 targets:"
-	@echo "  image             Build the compressed NixOS Raspberry Pi image"
+	@echo "  image             Build the NixOS Raspberry Pi SD image"
 	@echo "                    (on non-Linux hosts through $(or $(CONTAINER),a container runtime))"
 	@echo "  flash             Write the image to DEVICE=/dev/..."
 	@echo "  provision         Install decrypted runtime secrets on a booted device"
@@ -65,11 +65,11 @@ image-container:
 		  nix --extra-experimental-features "nix-command flakes" \
 		    build path:.#image --out-link /tmp/xdoor2-result; \
 		  mkdir -p output/nixos; \
-		  rm -f output/nixos/*.img.zst; \
-		  cp /tmp/xdoor2-result/sd-image/*.img.zst output/nixos/; \
-		  chmod 644 output/nixos/*.img.zst; \
+		  rm -f output/nixos/*.img; \
+		  cp /tmp/xdoor2-result/sd-image/*.img output/nixos/; \
+		  chmod 644 output/nixos/*.img; \
 		'
-	@ls -1 "$(OUTPUT_DIR)"/*.img.zst
+	@ls -1 "$(OUTPUT_DIR)"/*.img
 
 check-image:
 	@test -n "$(IMAGE)" || { echo "No SD image found. Run 'make image' first." >&2; exit 1; }
@@ -77,7 +77,7 @@ check-image:
 flash: check-image
 	@test -n "$(DEVICE)" || { echo "Set DEVICE to the target block device." >&2; exit 1; }
 	$(UNMOUNT)
-	zstd -dc "$(IMAGE)" | sudo dd of="$(DD_DEVICE)" bs=4194304 status=progress
+	sudo dd if="$(IMAGE)" of="$(DD_DEVICE)" bs=4194304 status=progress
 	sync
 
 deploy:
