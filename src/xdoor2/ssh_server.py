@@ -5,7 +5,7 @@ import logging
 import asyncssh
 from gpiozero import GPIOZeroError
 
-from xdoor2.helpers import DoorAction, WriterGone
+from xdoor2.helpers import SSH_BANNER, DoorAction, WriterGone
 from xdoor2.lock_control import DoorBusy, DoorMisconfig, StateMachineIssue
 from xdoor2.ssh_keys import KeyStore
 
@@ -116,11 +116,10 @@ class DoorSession(asyncssh.SSHServerSession):
 
 
 class DoorServer(asyncssh.SSHServer):
-    def __init__(self, keystore: KeyStore, actions: dict[str, DoorAction], greeting: str) -> None:
+    def __init__(self, keystore: KeyStore, actions: dict[str, DoorAction]) -> None:
         self._keystore = keystore
         self._actions = actions
         self._peer = None
-        self._greeting = greeting
         self._conn: asyncssh.SSHServerConnection | None = None
 
     def connection_made(self, conn: asyncssh.SSHServerConnection) -> None:
@@ -131,7 +130,7 @@ class DoorServer(asyncssh.SSHServer):
     def begin_auth(self, username: str) -> bool:
         assert self._conn is not None
         if username in self._actions:
-            self._conn.send_auth_banner(self._greeting)
+            self._conn.send_auth_banner(SSH_BANNER)
         else:
             # No keys means no public key can validate means auth fails.
             log.warning(f"auth attempt for unknown user {username!r} from {self._peer}")
@@ -156,12 +155,12 @@ class DoorServer(asyncssh.SSHServer):
 
 
 async def listen(
-    keystore: KeyStore, actions: dict[str, DoorAction], config: dict, greeting: str
+    keystore: KeyStore, actions: dict[str, DoorAction], config: dict
 ) -> asyncssh.SSHAcceptor:
     return await asyncssh.listen(
         host=config["listen_address"],
         port=config["port"],
-        server_factory=lambda: DoorServer(keystore, actions, greeting),
+        server_factory=lambda: DoorServer(keystore, actions),
         server_host_keys=[config["host_key"]],
         login_timeout=20,
         keepalive_interval=15,

@@ -16,13 +16,25 @@
   };
 
   environment.etc."xdoor2/config.toml".source = ./config.toml;
-  environment.etc."xdoor2/greeting".source = ./greeting;
   environment.etc."xdoor2/admin_keys".text = lib.concatLines (import ./admin-keys.nix);
   # Public half of the key that signs the upstream authorized_keys list. Only
   # ever used to verify a signature, so the world-readable Nix store is fine.
-
-  # TODO Fill me with sops -d --extract '["authorized_keys_pub_pem"]' secrets.yml > nixos/authorized_keys_pub.pem
-  # environment.etc."xdoor2/authorized_keys_pub.pem".source = ./authorized_keys_pub.pem;
+  environment.etc."xdoor2/authorized_keys_pub.pem".text = ''
+    -----BEGIN PUBLIC KEY-----
+    MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEC/yMswx6+6foFhF8/IjpG
+    BCx4h9fcg1470Py1YAYEmtociQ8PPepCJJk1jxSeIObsy4PWKYAByT4k6+dXvgSg
+    v2WQijKdgK8foKIlIsD9J2hy9X9Zbq32TLI95JEEXzFbbFXRNyemvdx8+Woc300S
+    qPukNaJxvMHYaBz6uCXWB/TFr7MT4Qf4LpdKEeug64ajCFLWrGzfd5mC+AFRuGaW
+    PYX07NiiaulkiTnRe8HHz06SYweHIvs5NjKW4kNryuJZmk+VVAeSK4yRDoAt0dVo
+    01Z9hyU4mm/6KSDwKudo8UNAGOFUiJnjE9u72MigP4bPKKgQ6Dh+3uW+5+haeBmJ
+    wHl0f9TRykLMg/rDr9sl0JSZsiNEWCU+jUOe7Nqm9auTQZvUeEVRDbwnIakCNoSn
+    O5yXne/5Ax+MOkDQUUMgYbGaV5Zsl0WNMzOssR8e/Cjj2kUxEUOW2C8Od+k6cU2/
+    Xd7Q0edgfKN3J2uslcPKJ2r+3ookdY4BwyHMuCD1AKOXNxezF1v0vOmVheeUL4gc
+    QXfXgM5TDrHQd9d49bqYAaho31CGUqlVfJicMTdSdP+MIr7ofXyOlMM/LGOUTrN7
+    pQ1yK3PpJ6a1i5bTHM68hfeGP0SY1IzouXepTN/JvaVIfSuo3hyI3jCu/r4kUxgx
+    pDI3kgn35TIG01VR7SxcDd0CAwEAAQ==
+    -----END PUBLIC KEY-----
+  '';
   services.udev.extraRules = ''
     SUBSYSTEM=="gpio", KERNEL=="gpiochip*", GROUP="gpio", MODE="0660"
   '';

@@ -5,6 +5,17 @@ from typing import Protocol
 
 SUPPORTED_SCHEMA_VERSION = 1
 
+SSH_BANNER = r"""
+
+       _    _       _
+      | |  | |     (_)
+ __  _| |__| | __ _ _ _ __
+ \ \/ /  __  |/ _` | | '_ \
+  >  <| |  | | (_| | | | | |
+ /_/\_\_|  |_|\__,_|_|_| |_|
+
+"""
+
 
 def load_config(path: Path) -> dict:
     with open(path, "rb") as f:
