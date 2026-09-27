@@ -187,6 +187,7 @@
 
           shellHook = ''
             export LANG=C.UTF-8
+            export PYTHONPATH="$PWD/src''${PYTHONPATH:+:$PYTHONPATH}"
             # No real GPIO on a dev machine so we use gpiozero's MockFactory
             export GPIOZERO_PIN_FACTORY=mock
           '';

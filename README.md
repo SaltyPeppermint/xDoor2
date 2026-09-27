@@ -51,6 +51,7 @@ nix run .#deploy
 ```sh
 nix develop
 pytest
+XDOOR_CONFIG=path/to/config.toml python -m xdoor2
 nix run .#lint  # ruff and ty
 nix fmt
 ```
