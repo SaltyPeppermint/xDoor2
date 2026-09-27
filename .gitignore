@@ -13,8 +13,5 @@ wheels/
 .direnv/
 
 # Nix build output
-output/
 result
 
-# Decrypted build-time secrets
-secrets/
