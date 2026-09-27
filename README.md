@@ -5,7 +5,7 @@ xDoor2 is the Python rewrite of the xHain door controller.
 ## Build the image
 
 ```sh
-nix build .#image
+nix run .#image
 ```
 
 The image is written to `result/sd-image/`.
@@ -50,7 +50,7 @@ nix run .#deploy
 
 ```sh
 nix develop
-uv run pytest
+pytest
 nix run .#lint  # ruff and ty
 nix fmt
 ```
