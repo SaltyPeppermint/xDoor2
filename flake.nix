@@ -32,6 +32,78 @@
           program = lib.getExe (pkgs.writeShellApplication { inherit name runtimeInputs text; });
         };
 
+        # Boots nixpkgs' darwin.linux-builder-vz VM only for the duration of the given command
+        linuxBuilder = pkgs.writeShellApplication {
+          name = "xdoor2-linux-builder";
+          runtimeInputs = [ pkgs.openssh ];
+          text =
+            let
+              builder = pkgs.darwin.linux-builder-vz;
+            in
+            ''
+              DIR="''${LINUX_BUILDER_DIR:-$HOME/.linux-builder}"
+              mkdir -p "$DIR"
+
+              # Installs the SSH key into /etc/nix, only asks for sudo on first run
+              (cd "$DIR" && ${lib.getExe builder.passthru.add-keys}) >&2
+
+              # Own process group so the whole VM tree can be killed at once
+              set -m
+              (cd "$DIR" && exec ${lib.getExe builder.passthru.run-builder}) </dev/null >"$DIR/vm.log" 2>&1 &
+              VM_PID=$!
+              set +m
+              trap 'kill -- -"$VM_PID" 2>/dev/null || true' EXIT
+
+              # The guest console goes to the macOS unified log, not to vm.log
+              LOG_HINT="/usr/bin/log show --last 5m --predicate 'subsystem == \"systems.applicative.vzvm\"'"
+              echo "Waiting for the linux-builder VM (logs: $DIR/vm.log and $LOG_HINT)" >&2
+              until ssh-keyscan -p 31022 127.0.0.1 >/dev/null 2>&1; do
+                kill -0 "$VM_PID" 2>/dev/null || { echo "linux-builder VM exited, see $DIR/vm.log and $LOG_HINT" >&2; exit 1; }
+                sleep 1
+              done
+
+              "$@"
+            '';
+        };
+
+        # On macOS the linux-builder VM only gets started when something actually needs building.
+        ensureBuilt = lib.getExe (
+          pkgs.writeShellApplication {
+            name = "xdoor2-ensure-built";
+            text = ''
+              ATTR="${self}#''${1:?usage: xdoor2-ensure-built <flake attribute>}"
+              OUT="$(nix eval --raw "$ATTR.outPath")"
+              if ! nix path-info "$OUT" >/dev/null 2>&1; then
+                ${lib.optionalString pkgs.stdenv.hostPlatform.isDarwin (lib.getExe linuxBuilder)} nix build --no-link "$ATTR" >&2
+              fi
+              echo "$OUT"
+            '';
+          }
+        );
+
+        # Runtime deps plus test tools for development, the single source of Python packages
+        devPython = pkgs.python314.withPackages (
+          ps:
+          let
+            # nixpkgs marks gpiozero Linux-only, but it's pure Python and we only use MockFactory locally
+            gpiozero = ps.gpiozero.overridePythonAttrs (old: {
+              meta = old.meta // {
+                platforms = lib.platforms.all;
+              };
+              doCheck = false;
+            });
+          in
+          [
+            ps.asyncssh
+            ps.cryptography
+            gpiozero
+            ps.httpx
+            ps.paho-mqtt
+            ps.pytest
+            ps.pytest-asyncio
+          ]
+        );
+
         # HOST and SSH_PORT can be set as ENV vars
         target = ''
           HOST="''${HOST:-xdoor2.lan.xhain.space}"
@@ -55,6 +127,7 @@
               [ pkgs.nixos-rebuild pkgs.openssh ]
               ''
                 ${target}
+                ${ensureBuilt} nixosConfigurations.xdoor2.config.system.build.toplevel >/dev/null
                 NIX_SSHOPTS="-p $SSH_PORT" exec nixos-rebuild switch \
                   --flake ${self}#xdoor2 \
                   --target-host "$SSH_DEST" \
@@ -67,9 +140,15 @@
             exec ssh -p "$SSH_PORT" "$SSH_DEST" "$@"
           '';
 
+          image = mkApp "xdoor2-image" "Build the SD image into ./result" [ ] ''
+            ${ensureBuilt} packages.aarch64-linux.image >/dev/null
+            nix build ${self}#packages.aarch64-linux.image "$@"
+          '';
+
           flash = mkApp "xdoor2-flash" "Write the SD image to a card" [ ] ''
             DEVICE="''${1:?usage: nix run .#flash -- /dev/your-sd-card}"
-            IMAGE=(${self.packages.aarch64-linux.image}/sd-image/*.img)
+            IMAGE_DIR="$(${ensureBuilt} packages.aarch64-linux.image)"
+            IMAGE=("$IMAGE_DIR"/sd-image/*.img)
             # MacOS thinks its special about writing to mounted disks and you have to do a little dance
             if [ "$(uname -s)" = Darwin ]; then
               diskutil unmountDisk "$DEVICE"
@@ -84,13 +163,10 @@
               [
                 pkgs.ruff
                 pkgs.ty
-                pkgs.uv
-                pkgs.python314
               ]
               ''
-                uv sync --frozen --quiet
                 ruff check .
-                ty check src
+                ty check --python ${devPython}/bin/python src
               '';
         };
 
@@ -100,14 +176,13 @@
 
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
+            devPython
             nixos-rebuild
             nixd
             nixfmt
             openssh
-            python314
             ruff
             ty
-            uv
           ];
 
           shellHook = ''
